@@ -47,21 +47,21 @@ Esta base de datos contiene 76 atributos, pero todos los experimentos publicados
 str(heart.data)
 ```
 
-Comprobamos la presencia de N.A. Solo 6 casos presentan símptomas de tener missing values, por ello seran eliminados del dataser
+El primer paso es el proceso de limpieza de datos para eliminar posibles valores faltante en el conjunto de datos, luego discretizar posibles variables continuas.  Comprobamos la presencia de N.A. Solo 6 casos presentan símptomas de tener missing values, por ello seran eliminados del dataser
 ```{r}
 s = sum(is.na(heart.data))
 heart.data <- na.omit(heart.data)
 ```
 
-Como nos enfrentamos a gran cantidad de datos numéricos, vamos a discretizarlos con el fin de crear el itemset.
+El segundo paso es la discretización de los datos. La discretización cambia el tipo de datos de atributos de tipo numérico a tipo discreto Algunos atributos con tipo numérico son la edad, trestbps, chol, thalach, oldpeak and ca, y se transforman a tipo discreto.
 
 ```{r}
 heart.data.mutated <- heart.data
 heart.data.mutated <- heart.data.mutated %>% mutate(
   age = cut(age,breaks = 3),
   sex = factor(sex, levels = c(0, 1), labels = c("female", "male")), # nominal – 2 values: male, female
-  trestbps = cut(trestbps, breaks = c(-Inf, 200, 240, Inf), labels = c("Desirable", "borderline_hight" ,"hight")), #resting blood pressure (in mm Hg on admission to the hospital) http://www.bloodpressureuk.org/BloodPressureandyou/Thebasics/Bloodpressurechart
-  cholestoral = cut(cholestoral, breaks = c(0, 200, 240, 600), labels = c("desirable", "pre-hight", "hight")), # serum cholestoral in mg/dl
+  trestbps = cut2(trestbps, g = 3), #resting blood pressure (in mm Hg on admission to the hospital) http://www.bloodpressureuk.org/BloodPressureandyou/Thebasics/Bloodpressurechart
+  cholestoral = cut2(cholestoral, g = 3), # serum cholestoral in mg/dl
   cp = factor(cp, labels = c("typical","atypical", "non-anginal","asymptomatic")), #nominal – 4 values: typical angina (angina), atypical angina (abnang), non anginal pain (notang), asymptomatic (asympt)
   fasting_blood_sugar = factor(fasting_blood_sugar, levels = c(0, 1), labels = c("false", "true")), #indicates whether fasting blood sugar is greater than 120 mg/dl
   restecg = factor(restecg, labels = c("normal","stt", "hypertrophy")), #indicates resting electrocardiographic outcomes
@@ -88,7 +88,7 @@ itemFrequencyPlot(heart.data.transactions, support=0.1, cex.names=0.8)
 
 En el siguiente gráfico vemos la distribución de los tamaños de los itemsets frecuentes. Vemos cómo el tamaño más común es 5 items por itemset. También se muestran los primeros 10 itemsets frecuentes.
 
-Usamos apriori para obtener los itemsets frecuentees. Primera información importante que **trestbps=Desirable** es muy frecuente. En el barplot se muestran los tamaños de itemsets frecuentes. Se ve cómo el tamaño de itemsets más frecuente es 4.
+Usamos apriori para obtener los itemsets frecuentees. Primera información importante que **sex=male** o **fasting_blood_sugar=false** es muy frecuente. En el barplot se muestran los tamaños de itemsets frecuentes. Se ve cómo el tamaño de itemsets más frecuente es 4.
 
 ```{r}
 heart.data.frequent <- apriori(heart.data.transactions, parameter=list(support=0.1, target="frequent"), control=list(verbose = FALSE))
@@ -121,10 +121,8 @@ inspect(head(heart.data.rules.sorted, n = 10))
 plot(heart.data.rules)
 ```
 
+En las anteriores reglas se ve cómo la principal consecuencia que nos permite tener un lift bueno es **num=sick** es decir, si el usuario esta enfermo. Reglas interesantes a partir de estas, por ejemplo, cómo la reversión **thal=reversable defect** es un itemset que aparecec en varias reglas en el antececendente y en todas ellas el consecuente es un estado no saludable del paciente. Lo más destacable de este antecendente es el hecho de que independiente del resto de antecedentes, su aparición tienen un peso destacable en el consecuente enfermo. El colesterol alto **cholestoral=[265,564]** tiene una presencia en distintos itemsets. Será interesante su estudio y si tiene alguna relación respecto a la enfermedad coronaria. Otro aspecto a destacar y que contradice mis creencias al respecto, es que la edad no aparece en ninguna regla importante y por tanto no es un factor relevante.
 
-En las anteriores reglas se ve cómo la principal consecuencia que nos permite tener un lift bueno es **num=sick** es decir, si el usuario esta enfermo. Reglas interesantes a partir de estas, por ejemplo, cómo la reversión **thal=reversable defect** es un itemset que aparecec en varias reglas en el antececendente y en todas ellas el consecuente es un estado no saludable del paciente. Lo más destacable de este antecendente es el hecho de que independiente del resto de antecedentes, su aparición tienen un peso destacable en el consecuente enfermo.
-
-Otro aspecto a destacar y que contradice mis creencias al respecto, es que la edad no aparece en ninguna regla importante y por tanto no es un factor relevante.
 
 ## Reglas específicas mediante filtrado
 
@@ -137,7 +135,7 @@ heart.data.rules.sorted <- sort(heart.data.rules, by="support")
 inspect(head(heart.data.rules.sorted, n = 10))
 ```
 
-En las anteriores reglas se puede observar como la angina inducida por el ejercicio es falsa **exang=false** y estado del corazón normal **thal=normal** demuestran que son buenos indicadores de la salud. Este dos items aparecen en varias ocasiones en los primeros 10 itemsets con un valor de confianza y de lift bastante buenos. La angina estable es un síndrome clínico caracterizado por malestar en el pecho, que aparece con el ejercicio o estrés emocional y remite con el descanso o con la administración de nitroglicerina. El número de vasos coloreados que son cero **ca=0** y si el paciente es un portador pero no experimenta síntomas **cp=asymptomatic** también mostraron factores que indican condiciones saludables.
+En las anteriores reglas se puede observar como la angina inducida por el ejercicio es falsa **exang=false** y estado del corazón normal **thal=normal** demuestran que son buenos indicadores de la salud. Este dos items aparecen en varias ocasiones en los primeros 10 itemsets con un valor de confianza y de lift bastante buenos. La angina estable es un síndrome clínico caracterizado por malestar en el pecho, que aparece con el ejercicio o estrés emocional y remite con el descanso o con la administración de nitroglicerina. El número de vasos coloreados que son cero **ca=0** también indica condiciones saludables.
 
 -	{exang=false,thal=normal}	=>	{num=healthy}	
 -	{exang=false,ca=0}	=>	{num=healthy}
@@ -164,7 +162,6 @@ Además, si los resultados mostraron que cuando la angina inducida por el ejerci
 
 El número de vasos coloreados que son cero **ca=0** y que el estado del corazón (normal) **thal=normal** también se mostró como buenos indicadores de salud. 
 
-
 ```{r}
 heart.data.rules.subset <- subset(heart.data.rules, subset = lhs %pin% c("exang=", "sex="))
 heart.data.rules.subset <- sort(heart.data.rules.subset, by="support")
@@ -188,18 +185,22 @@ inspect(head(heart.data.rules.subset, n = 10))
 plot(heart.data.rules.subset, method="paracoord", reorder=TRUE)
 ```
 
+
+
 A continuación voy a probar a ver reglas con items negados. 
 
-Voy a negar la variable cp y ca.
+Voy a negar la variable cp y ca y el colesterol.
 
 ```{r}
 heart.data.mutated$thalIsReversableDefect <- as.factor(ifelse(heart.data$thal == 7 , 1, 0))
 heart.data.mutated$ageOld <- as.factor(ifelse(heart.data$age > 50 , 1, 0))
+heart.data.mutated$cholestoralHight <- as.factor(ifelse(heart.data$cholestoral > 250 , 1, 0))
 heart.data.mutated$caIs0 <- as.factor(ifelse(heart.data$ca == 0, 1 , 0))
 heart.data.mutated <- heart.data.mutated %>% mutate(
   ca = NULL,
   thal = NULL,
-  age = NULL
+  age = NULL,
+  cholestoral = NULL
 )
 str(heart.data.mutated)
 ```
@@ -213,14 +214,13 @@ heart.data.rules <- deleteRebundantRules(heart.data.rules)
 ```
 
 ```{r}
-heart.data.rules.sorted <- sort(heart.data.rules, by="lift")
+heart.data.rules.sorted <- sort(heart.data.rules, by="support")
 inspect(head(heart.data.rules.sorted, n = 10))
-plot(heart.data.rules)
 ```
 
 
 Se muestran las 10 primeras reglas ordenadas por Lift. Observándolas, vemos como no obtenemos ninguna regla demasiado informativa. Quizás la más destacable sea que si el 
-el número de vasos principales coloreados por fluoroscopia **ca** es distinto de 0 es muy probables que tengan una enfermedad coronaria. Respecto a la variable ageOld no nos aporta ninguna regla.
+el número de vasos principales coloreados por fluoroscopia **ca** es distinto de 0 es muy probables que tengan una enfermedad coronaria. Respecto a la variable ageOld no nos aporta ninguna regla como al igual sucede con el colesterol alto. Aparentemente no existe relacion ninguna entre el colesterol y la enfermedad, por tanto descartamos las hipotesi hecha al principio del estudio hacerca del colesterol.
 
 ## CONCLUSIONES
 

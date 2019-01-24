@@ -1,0 +1,24 @@
+"0","knitr::opts_chunk$set(echo = TRUE)"
+"0","library(ggplot2)"
+"0","library(devtools)"
+"0","library(reshape) "
+"0","library(ggbiplot)"
+"2","Loading required package: plyr
+"
+"2","
+Attaching package: ‘plyr’
+
+"
+"2","The following objects are masked from ‘package:reshape’:
+
+    rename, round_any
+
+"
+"2","Loading required package: scales
+"
+"0","library(rgl)  "
+"0","library(GGally)"
+"0","library(outliers)"
+"0","library(EnvStats)"
+"2","Error in library(EnvStats) : there is no package called ‘EnvStats’
+"

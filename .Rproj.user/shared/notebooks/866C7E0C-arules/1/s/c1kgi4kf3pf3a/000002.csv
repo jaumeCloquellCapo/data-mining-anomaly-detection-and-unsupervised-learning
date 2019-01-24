@@ -1,0 +1,6 @@
+"0","iSLoan = apriori(loanTrans, parameter = list(support = 0.1, target=""frequent""))"
+"1","Apriori
+"
+"1","
+Parameter specification:
+"

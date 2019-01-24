@@ -1,0 +1,227 @@
+---
+title: "heart-disease"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(grid) 
+library(gridExtra)
+library(tidyverse)
+library(dummies)
+library(readxl)
+library(knitr)
+library(ggplot2)
+library(lubridate)
+library(arules)
+library(arulesViz)
+library(plyr)
+library(corrplot)
+library(Hmisc)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+```
+
+```{r}
+deleteRebundantRules <- function (rules) {
+  subsetMatrix <- is.subset(rules, rules)
+  subsetMatrix[lower.tri(subsetMatrix, diag=TRUE)] <- FALSE
+  redundant <- colSums(subsetMatrix, na.rm=TRUE) >= 1
+  rules <- rules[!redundant]
+  return (rules)
+}
+```
+
+```{r}
+heart.data <- read.csv("https://archive.ics.uci.edu/ml/machine-learning-databases/heart-disease/processed.cleveland.data",header=FALSE,sep=",",na.strings = '?')
+names(heart.data) <- c( "age", "sex", "cp", "trestbps", "cholestoral","fasting_blood_sugar", "restecg",
+                   "thalach","exang", "oldpeak","slope", "ca", "thal", "num")
+```
+
+
+El dataset escogido se llama **Heart Disease Data Set** y se trata de un dataset del repositorio de datos UCI que tiene un conjunto de predictores y una variable de salida **num**. Se trata de un dataset que contiene datos de pacientes que han sido tratados por enfermedades cardíacas
+
+Esta base de datos contiene 76 atributos, pero todos los experimentos publicados se refieren al uso de un subconjunto de 14 de ellos. En particular, la base de datos de Cleveland es la única que ha sido utilizada por investigadores de ML para esta fecha. El campo **num** se refiere a la presencia de una enfermedad cardíaca en el paciente. Es un valor entero de 0 (sin presencia) a 4. Los experimentos con la base de datos de Cleveland se han concentrado en simplemente intentar distinguir la presencia (valores 1,2,3,4) de la ausencia (valor 0).
+
+```{r}
+str(heart.data)
+```
+
+Comprobamos la presencia de N.A. Solo 6 casos presentan símptomas de tener missing values, por ello seran eliminados del dataser
+```{r}
+s = sum(is.na(heart.data))
+heart.data <- na.omit(heart.data)
+```
+
+Como nos enfrentamos a gran cantidad de datos numéricos, vamos a discretizarlos con el fin de crear el itemset.
+
+```{r}
+heart.data.mutated <- heart.data
+heart.data.mutated <- heart.data.mutated %>% mutate(
+  age = cut(age,breaks = 3),
+  sex = factor(sex, levels = c(0, 1), labels = c("female", "male")), # nominal – 2 values: male, female
+  trestbps = cut(trestbps, breaks = c(-Inf, 200, 240, Inf), labels = c("Desirable", "borderline_hight" ,"hight")), #resting blood pressure (in mm Hg on admission to the hospital) http://www.bloodpressureuk.org/BloodPressureandyou/Thebasics/Bloodpressurechart
+  cholestoral = cut(cholestoral, breaks = c(0, 200, 240, 600), labels = c("desirable", "pre-hight", "hight")), # serum cholestoral in mg/dl
+  cp = factor(cp, labels = c("typical","atypical", "non-anginal","asymptomatic")), #nominal – 4 values: typical angina (angina), atypical angina (abnang), non anginal pain (notang), asymptomatic (asympt)
+  fasting_blood_sugar = factor(fasting_blood_sugar, levels = c(0, 1), labels = c("false", "true")), #indicates whether fasting blood sugar is greater than 120 mg/dl
+  restecg = factor(restecg, labels = c("normal","stt", "hypertrophy")), #indicates resting electrocardiographic outcomes
+  thalach = cut(thalach,breaks =4),  #maximum heart rate achieved
+  exang = factor(exang,levels = c(0, 1), labels = c("false", "true")), #highlights existence of exercise induced angina
+  oldpeak = cut2(oldpeak, g = 4), # ST depression induced by exercise relative to rest slope: the slope of the peak exercise ST segment
+  slope = factor(slope, labels = c("upsloping","flat", "downsloping")), #the slope characteristics of the peak exercise ST segment 
+  ca = factor(ca), #number of fluoroscopy colored major vessels (0–3)
+  thal = factor(thal, levels = c(3, 6, 7), labels = c("normal","fixed defect","reversable defect")),
+  num = factor(num >0, levels = c(FALSE, TRUE), labels = c("healthy", "sick")) #value is either healthy or existence of heart disease 
+  #num: diagnosis of heart disease (angiographic disease status)
+    #– Value 0: < 50% diameter narrowing
+    #– Value 1: > 50% diameter narrowing
+)
+str(heart.data.mutated)
+```
+
+En el siguiente gráfico se muestran los items con una frecuencia de más de 0.1 (soporte > 0.1). En este gráfico podemos decidir qué items estudiar más en profundidad. Para obtener reglas con valor, podemos analizar reglas en las que aparezcan items no muy frecuentes. Como se muestra, hay algunos items bastante frecuentes, como son por ejemplo lapresión arterial en reposo **trestbps=Desirable** y el azúcar en la sangre no en ayunas **fasting_blood_sugar=false** son itemsets muy frecuentes. Sin embargo, estudiar los items opuestos puede resultar bastante más interesante. Además cabe destacar la presencia superior del sexo masculino respecto al femenino. Será interesante poder ver si existe una presencia de enfermedad cardíaca en los hombres superior respecto a las mujeres.
+
+```{r}
+heart.data.transactions <- as(heart.data.mutated,"transactions") 
+itemFrequencyPlot(heart.data.transactions, support=0.1, cex.names=0.8)
+```
+
+En el siguiente gráfico vemos la distribución de los tamaños de los itemsets frecuentes. Vemos cómo el tamaño más común es 5 items por itemset. También se muestran los primeros 10 itemsets frecuentes.
+
+Usamos apriori para obtener los itemsets frecuentees. Primera información importante que **trestbps=Desirable** es muy frecuente. En el barplot se muestran los tamaños de itemsets frecuentes. Se ve cómo el tamaño de itemsets más frecuente es 4.
+
+```{r}
+heart.data.frequent <- apriori(heart.data.transactions, parameter=list(support=0.1, target="frequent"), control=list(verbose = FALSE))
+heart.data.frequent.sorted <- sort(heart.data.frequent, by="support")
+barplot(table(size(heart.data.frequent)), xlab="itemset size", ylab="count")
+inspect(head(heart.data.frequent.sorted, n = 10))
+```
+
+Vamos a ver cuál es la cantidad de itemsets frecuentes, de itemsets cerrados y de itemsets maximales. Como se muestra en el siguiente gráfico, hay una gran diferencia entre la cantidad de itemsets frecuentes y los cerrados y maximales.
+
+```{r}
+heart.data.frequent.maximal <- heart.data.frequent[is.maximal(heart.data.frequent)]
+heart.data.frequent.closed <- heart.data.frequent[is.closed(heart.data.frequent)]
+barplot( c(frequent=length(heart.data.frequent), closed=length(heart.data.frequent.closed), maximal=length(heart.data.frequent.maximal)), ylab="count", xlab="itemsets")
+```
+
+## Reglas general
+
+A continuación empezamos ya a aplicar apriori para la obtención de reglas. En esta ejecución indicaré que el mínimo soporte sea de 0.1 y la mínima confianza de 0.79. También indicaré el mínimo del tamaño de las reglas, que será 2.
+
+Posteriormente tras cada filtrado según los items que quiera explorar, aplicaré el filtro de reglas redundantes. También muestro un gráfico en el que se muestran como puntos las distintas reglas generadas por nuestro método. 
+
+Se muestra cómo las reglas con mejor Lift son por lo general con menor soporte que 0.3 o 0.4 y hay algunas reglas con un "confidence"" muy alto donde el valor es cercano a 1, sin embargo, estas reglas las consideraré como triviales siempre y cuando su soporte sea muy elevado, superior al 50%. Los lifts más “realistas” o con más equilibrio los encontramos en un nivel de confianza entre 0.5 y 0.8 aproximadamente. A continuación se muestran algunas reglas con más lift.
+
+```{r}
+heart.data.rules <- apriori(heart.data.transactions, parameter = list(minlen=2, supp=0.1, conf=0.79), control=list(verbose = FALSE))
+heart.data.rules <- deleteRebundantRules(heart.data.rules)
+heart.data.rules.sorted <- sort(heart.data.rules, by="lift")
+inspect(head(heart.data.rules.sorted, n = 10))
+plot(heart.data.rules)
+```
+
+
+En las anteriores reglas se ve cómo la principal consecuencia que nos permite tener un lift bueno es **num=sick** es decir, si el usuario esta enfermo. Reglas interesantes a partir de estas, por ejemplo, cómo la reversión **thal=reversable defect** es un itemset que aparecec en varias reglas en el antececendente y en todas ellas el consecuente es un estado no saludable del paciente. Lo más destacable de este antecendente es el hecho de que independiente del resto de antecedentes, su aparición tienen un peso destacable en el consecuente enfermo.
+
+Otro aspecto a destacar y que contradice mis creencias al respecto, es que la edad no aparece en ninguna regla importante y por tanto no es un factor relevante.
+
+## Reglas específicas mediante filtrado
+
+Como puede haber muchas de estas reglas, solo las reglas que contenían la clase 'enfermo' o 'saludable' en el lado derecho (RHS) seran considerados. 
+
+```{r}
+heart.data.rules <- apriori(heart.data.transactions, parameter = list(minlen=2, supp=0.1, conf=0.79), appearance = list(rhs = c("num=healthy", "num=sick")), control=list(verbose = FALSE))
+heart.data.rules <- deleteRebundantRules(heart.data.rules)
+heart.data.rules.sorted <- sort(heart.data.rules, by="support")
+inspect(head(heart.data.rules.sorted, n = 10))
+```
+
+En las anteriores reglas se puede observar como la angina inducida por el ejercicio es falsa **exang=false** y estado del corazón normal **thal=normal** demuestran que son buenos indicadores de la salud. Este dos items aparecen en varias ocasiones en los primeros 10 itemsets con un valor de confianza y de lift bastante buenos. La angina estable es un síndrome clínico caracterizado por malestar en el pecho, que aparece con el ejercicio o estrés emocional y remite con el descanso o con la administración de nitroglicerina. El número de vasos coloreados que son cero **ca=0** y si el paciente es un portador pero no experimenta síntomas **cp=asymptomatic** también mostraron factores que indican condiciones saludables.
+
+-	{exang=false,thal=normal}	=>	{num=healthy}	
+-	{exang=false,ca=0}	=>	{num=healthy}
+-	{ca=0,thal=normal} => {num=healthy}
+
+Si filtramos todas reglas donde en el antecedente aparezca el género del paciente, nos fijamos que todas reglas para la clase "saludable" se atribuyeron al género femenino, lo que indica que, en base a este conjunto de datos en particular, las mujeres tienen más posibilidades de estar libres de enfermedad coronaria. 
+
+```{r}
+heart.data.rules.subset <- subset(heart.data.rules, subset = lhs %in% c("sex=male", "sex=female"))
+heart.data.rules.subset <- sort(heart.data.rules.subset, by="support")
+inspect(head(heart.data.rules.subset, n = 10))
+plot(heart.data.rules.subset, method="paracoord", reorder=TRUE)
+```
+
+- {sex=male,cp=asymptomatic}	=>	{num=sick}
+- {sex=female,thal=normal}	=>	{num=healthy}
+-	{sex=female,exang=false}	=>	{num=healthy}
+-	{sex=male,exang=true}	=>	{num=sick}
+
+Además, si los resultados mostraron que cuando la angina inducida por el ejercicio (dolor en el pecho) era falsa **exang=false**, era un buen indicador de que una persona estaba sana, independientemente del género (la angina inducida por el ejercicio = falsa ha aparecido en el LHS de todas las reglas de alta confianza). 
+
+- {sex=male,exang=true}	=>	{num=sick}
+- {sex=female,exang=false}	=>	{num=healthy}
+
+El número de vasos coloreados que son cero **ca=0** y que el estado del corazón (normal) **thal=normal** también se mostró como buenos indicadores de salud. 
+
+
+```{r}
+heart.data.rules.subset <- subset(heart.data.rules, subset = lhs %pin% c("exang=", "sex="))
+heart.data.rules.subset <- sort(heart.data.rules.subset, by="support")
+inspect(head(heart.data.rules.subset, n = 10))
+```
+
+Las reglas filtradas para la clase "enfermo", por otro lado, mostraron que el tipo de dolor torácico es asintomático **cp=asymptomatic** y que la reversión **thal=reversable defect** es un indicador probable de que una persona está enferma (ambas reglas de alta confianza tienen estos dos factores en LHS).
+
+```{r}
+heart.data.rules.subset <- subset(heart.data.rules, subset = rhs %in% c("num=sick"))
+heart.data.rules.subset <- sort(heart.data.rules.subset, by="support")
+inspect(head(heart.data.rules.subset, n = 10))
+plot(heart.data.rules.subset, method="paracoord", reorder=TRUE)
+```
+
+
+```{r}
+heart.data.rules.subset <- subset(heart.data.rules, subset = lhs %in% c("thal=reversable defect", "cp=asymptomatic"))
+heart.data.rules.subset <- sort(heart.data.rules.subset, by="support")
+inspect(head(heart.data.rules.subset, n = 10))
+plot(heart.data.rules.subset, method="paracoord", reorder=TRUE)
+```
+
+A continuación voy a probar a ver reglas con items negados. 
+
+Voy a negar la variable cp y ca.
+
+```{r}
+heart.data.mutated$thalIsReversableDefect <- as.factor(ifelse(heart.data$thal == 7 , 1, 0))
+heart.data.mutated$ageOld <- as.factor(ifelse(heart.data$age > 50 , 1, 0))
+heart.data.mutated$caIs0 <- as.factor(ifelse(heart.data$ca == 0, 1 , 0))
+heart.data.mutated <- heart.data.mutated %>% mutate(
+  ca = NULL,
+  thal = NULL,
+  age = NULL
+)
+str(heart.data.mutated)
+```
+
+
+```{r}
+heart.data.transactions <- as(heart.data.mutated,"transactions") 
+itemFrequencyPlot(heart.data.transactions, support=0.1, cex.names=0.8)
+heart.data.rules <- apriori(heart.data.transactions, parameter = list(minlen=3, supp=0.1, conf=0.79), control=list(verbose = FALSE))
+heart.data.rules <- deleteRebundantRules(heart.data.rules)
+```
+
+```{r}
+heart.data.rules.sorted <- sort(heart.data.rules, by="lift")
+inspect(head(heart.data.rules.sorted, n = 10))
+plot(heart.data.rules)
+```
+
+
+Se muestran las 10 primeras reglas ordenadas por Lift. Observándolas, vemos como no obtenemos ninguna regla demasiado informativa. Quizás la más destacable sea que si el 
+el número de vasos principales coloreados por fluoroscopia **ca** es distinto de 0 es muy probables que tengan una enfermedad coronaria. Respecto a la variable ageOld no nos aporta ninguna regla.
+
+## CONCLUSIONES
+
+Esta investigación ha presentado un experimento de extracción de reglas en datos de enfermedades del corazón utilizando algoritmos de extracción de reglas (Apriori). Se realizó un análisis adicional basado en la minería de reglas al clasificar los datos según el género y se encontraron factores de riesgo significativos para las enfermedades cardíacas tanto para hombres como para mujeres. Curiosamente, se encuentra en el conjunto de reglas saludables, ser "femenino" es uno de los factores para una condición cardíaca saludable. En otras palabras, los resultados indicaron que las mujeres tienen más probabilidades de estar libres de enfermedad coronaria que los hombres. 

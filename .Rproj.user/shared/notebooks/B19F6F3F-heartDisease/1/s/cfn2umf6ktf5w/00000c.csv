@@ -1,0 +1,4 @@
+"0","heart.data.rules <- apriori(heart.data.transactions, parameter = list(minlen=2, supp=0.1, conf=0.79), control=list(verbose = FALSE))"
+"0","heart.data.rules <- deleteRebundantRules(heart.data.rules)"
+"2","[2019-01-24 03:25:48] [error] handle_read_frame error: websocketpp.transport:7 (End of File)
+"

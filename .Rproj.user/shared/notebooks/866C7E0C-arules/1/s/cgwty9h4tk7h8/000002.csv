@@ -1,0 +1,1 @@
+"0","aRulesSelect = subset(aRules, subset = rhs %in% c(""impago=Yes"", ""impago=No"") | lift > 2)"

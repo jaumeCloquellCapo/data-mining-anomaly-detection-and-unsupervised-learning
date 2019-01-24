@@ -1,0 +1,32 @@
+"0","knitr::opts_chunk$set(echo = TRUE, warning = FALSE)"
+"0","library(ggplot2)"
+"0","library(reshape)"
+"2","
+Attaching package: ‘reshape’
+
+"
+"2","The following object is masked from ‘package:Matrix’:
+
+    expand
+
+"
+"0","library(tidyr)"
+"2","
+Attaching package: ‘tidyr’
+
+"
+"2","The following objects are masked from ‘package:reshape’:
+
+    expand, smiths
+
+"
+"2","The following object is masked from ‘package:Matrix’:
+
+    expand
+
+"
+"0","library(discretization)"
+"0","library(arules)"
+"0","library(arulesViz)"
+"2","Loading required package: grid
+"

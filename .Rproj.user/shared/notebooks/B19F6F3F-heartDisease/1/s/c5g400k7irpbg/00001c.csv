@@ -1,0 +1,3 @@
+"0","heart.data.frequent.maximal <- heart.data.frequent[is.maximal(heart.data.frequent)]"
+"0","heart.data.frequent.closed <- heart.data.frequent[is.closed(heart.data.frequent)]"
+"0","barplot( c(frequent=length(heart.data.frequent), closed=length(heart.data.frequent.closed), maximal=length(heart.data.frequent.maximal)), ylab=""count"", xlab=""itemsets"")"

@@ -1,0 +1,7 @@
+"0","knitr::opts_chunk$set(echo = TRUE, warning = FALSE)"
+"0","library(ggplot2)"
+"0","library(reshape)"
+"0","library(tidyr)"
+"0","library(discretization)"
+"0","library(arules)"
+"0","library(arulesViz)"

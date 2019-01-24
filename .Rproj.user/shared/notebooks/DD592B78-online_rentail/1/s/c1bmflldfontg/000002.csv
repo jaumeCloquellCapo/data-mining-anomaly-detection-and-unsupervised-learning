@@ -1,0 +1,4 @@
+"0","dt <- read.csv(""Bike-Sharing-Dataset/day.csv"")"
+"0","  "
+"0","  # basic check to see the data has been properly read"
+"0","head(dt)"

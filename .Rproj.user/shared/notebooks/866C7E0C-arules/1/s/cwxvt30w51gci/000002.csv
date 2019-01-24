@@ -1,0 +1,3 @@
+"0","loanData = loanData[1:700,]"
+"0","loanData$educ = factor(loanData$educ, labels = c(""Did not complete high school"", ""High school degree"", ""Some college"", ""College degree"",""Post-undergraduate degree""))"
+"0","loanData$impago = factor(loanData$impago, labels = c(""No"", ""Yes""))"

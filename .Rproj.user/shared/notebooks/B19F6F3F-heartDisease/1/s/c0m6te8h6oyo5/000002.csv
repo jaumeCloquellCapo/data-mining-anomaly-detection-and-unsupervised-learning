@@ -1,0 +1,6 @@
+"0","heart.data.rules <- apriori(heart.data.transactions, parameter = list(minlen=2, supp=0.2, conf=0.75))"
+"1","Apriori
+"
+"1","
+Parameter specification:
+"

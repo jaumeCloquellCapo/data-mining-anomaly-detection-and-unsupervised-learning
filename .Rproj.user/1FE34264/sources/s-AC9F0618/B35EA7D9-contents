@@ -1,0 +1,89 @@
+---
+title: "online_rentail"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(grid) 
+library(gridExtra)
+library(tidyverse)
+library(dummies)
+library(readxl)
+library(knitr)
+library(ggplot2)
+library(lubridate)
+library(dplyr)
+library(arules)
+library(arulesViz)
+library(plyr)
+library(corrplot)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+dt <- read.csv("Bike-Sharing-Dataset/day.csv")
+  
+  # basic check to see the data has been properly read
+head(dt)
+str(dt)
+```
+
+http://www.rpubs.com/shayini/bike_sharing
+
+```{r}
+dt.mutated <- dt
+  # mark the cancelled invoices, correct the country name, create InvoicePrefix indicator
+dt.mutated <- dt.mutated %>% mutate(
+  instant = NULL,
+  season = factor(format(season, format="%A"), levels = c("1", "2","3","4") , labels = c("Spring","Summer","Fall","Winter")),
+  holiday = factor(format(weathersit, format="%A"), levels = c("1", "2","3","4"), labels = c("Good:Clear/Sunny","Moderate:Cloudy/Mist","Bad: Rain/Snow/Fog","Worse: Heavy Rain/Snow/Fog")),
+  yr = factor(format(yr, format="%A"), levels = c("0", "1") , labels = c("2011","2012")),
+  mnth = as.factor(mnth),
+  temp = NULL,
+  atemp = NULL,
+  windspeed = NULL,
+  hum = NULL,
+  casual = NULL,
+  registered = NULL,
+  cnt = NULL,
+  workingday = as.factor(workingday),
+  weekday = as.factor(weekday),
+  weathersit = as.factor(weathersit)
+  )
+str(dt.mutated)
+```
+
+
+```{r}
+car.transactions <- as(dt.mutated,"transactions") 
+itemFrequencyPlot(car.transactions, support=0.05, cex.names=0.8)
+```
+
+
+```{r}
+car.rules <- apriori(car.transactions, parameter=list(support=0.1,target="frequent"))
+car.rules.sorted <- sort(car.rules, by="support")
+barplot(table(size(car.rules)), xlab="itemset size", ylab="count")
+inspect(car.rules.sorted)
+```
+
+```{r, results='hide'}
+car.rules <- apriori(car.transactions, parameter = list(target = "rules"))
+```
+
+
+```{r}
+plot(car.rules)
+plot(car.rules, method="graph", control=list(type="items"), measure='support', shading='confidence')
+ plot(car.rules, method="paracoord", reorder=TRUE)
+plot(car.rules, method="grouped")
+```
+
+
+
+
+
+
+
+
+

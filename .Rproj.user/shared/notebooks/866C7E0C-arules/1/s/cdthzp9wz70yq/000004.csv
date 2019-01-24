@@ -1,0 +1,7 @@
+"0","length(iSCLoan)"
+"1","[1]"
+"1"," 1986"
+"1","
+"
+"0","iSCData = data.frame(itemset.size = as.factor(size(iSCLoan)))"
+"0","ggplot(iSCData) + geom_bar(aes(itemset.size)) + ggtitle(""Histograma de los itemsets cerrados"")"

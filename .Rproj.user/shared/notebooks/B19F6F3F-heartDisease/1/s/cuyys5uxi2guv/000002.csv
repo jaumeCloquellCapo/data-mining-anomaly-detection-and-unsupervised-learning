@@ -1,0 +1,3 @@
+"0","s = sum(is.na(heart.data))"
+"0","heart.data <- na.omit(heart.data)"
+"0","#str(heart.data)"

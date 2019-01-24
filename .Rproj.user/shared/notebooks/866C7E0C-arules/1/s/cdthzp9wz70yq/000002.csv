@@ -1,0 +1,2 @@
+"0","iSCLoan = iSLoan[is.closed(iSLoan)]"
+"0","inspect(head(sort(iSCLoan, by = ""support""), 5))"

@@ -1,0 +1,6 @@
+"0","aRules = apriori(loanTrans, parameter = list(support = 0.1, confidence = 0.8, minlen = 2))"
+"1","Apriori
+"
+"1","
+Parameter specification:
+"

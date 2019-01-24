@@ -1,0 +1,3 @@
+"0","car.rules <- deleteRebundantRules(car.rules)"
+"0","car.rules.sorted <- sort(car.rules, by=""support"")"
+"0","inspect(head(car.rules.sorted))"

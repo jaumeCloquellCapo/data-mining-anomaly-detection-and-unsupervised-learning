@@ -1,0 +1,202 @@
+---
+title: "Reglas de asociación"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(grid) 
+library(gridExtra)
+library(tidyverse)
+library(dummies)
+library(readxl)
+library(knitr)
+library(ggplot2)
+library(lubridate)
+library(arules)
+library(arulesViz)
+library(plyr)
+library(corrplot)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+```
+
+Este conjunto de datos se obtuvo del repositorio de aprendizaje automático de UCI (https://archive.ics.uci.edu/ml/datasets/car+evaluation).
+
+
+El dataset contiene 1728 observaciones en las siguientes 7 variables, donde cada fila contiene información sobre un automóvil. Todas las variables son variables categóricas.
+
+buying: Precio del coche (Levels: high, low, med ,vhigh)
+maint: Precio de mantenimiento (Levels: high, low, med, vhigh)
+doors: Número de puertas (Levels: 2, 3, 4, 5more)
+persons: Número de persona  (Levels: 2, 4, more)
+lug_boot: Tamaño del maleteo  (Levels: big, med, small)
+safety: Seguridad del coche (Levels: high, low, med)
+acceptance: Acceptación del coche (Levels: acc, good, unacc, vgood)
+
+```{r}
+car.dataset <- read.csv(url("http://archive.ics.uci.edu/ml/machine-learning-databases/car/car.data"), header=FALSE, col.names = c("buying","maint","doors","persons","lug_boot", "safety", "acceptance"))
+str(car.dataset)
+```
+
+En el siguiente gráfico se muestran los items con una frecuencia de más de 0.1 (soporte > 0.1). En este gráfico podemos decidir qué items estudiar más en profundidad. Para obtener reglas con valor, podemos analizar reglas en las que aparezcan items no muy frecuentes. Como se muestra, hay algunos items bastante frecuentes, como son por ejemplo “acceptance=unacc”. Sin embargo, estudiar los items opuestos puede resultar bastante más interesante.
+
+```{r}
+car.transactions <- as(car.dataset,"transactions") 
+itemFrequencyPlot(car.transactions, support=0.1, cex.names=0.8)
+```
+
+A continuación usamos apriori con un soporte mínimo de 0.1 para obtener los itemsets frecuentes.Primera información importante que acceptance=unacc es muy frecuente. En el barplot se muestran los tamaños de itemsets frecuentes. Se ve cómo el tamaño de itemsets más frecuente es 2.
+
+```{r, results='hide'}
+car.rules <- apriori(car.transactions, parameter=list(support=0.1,target="frequent"))
+car.rules.sorted <- sort(car.rules, by="support")
+```
+
+En el siguiente gráfico vemos la distribución de los tamaños de los itemsets frecuentes. Vemos cómo el tamaño más común es 2 items por itemset. También se muestran los primeros 10 itemsets frecuentes.
+
+```{r}
+barplot(table(size(car.rules)), xlab="itemset size", ylab="count")
+inspect(head(car.rules))
+```
+
+Vamos a ver cuál es la cantidad de itemsets frecuentes, de itemsets cerrados y de itemsets maximales. Como se muestra en el siguiente gráfico, hay una gran diferencia entre la cantidad de itemsets frecuentes y los cerrados y maximales.
+
+```{r}
+car.rules.maximal <- car.rules[is.maximal(car.rules)]
+#inspect(head(sort(car.rules.maximal, by="support")))
+car.rules.closed <- car.rules[is.closed(car.rules)]
+#inspect(head(sort(car.rules.closed, by="support")))
+barplot( c(frequent=length(car.rules), closed=length(car.rules.closed), maximal=length(car.rules.maximal)), ylab="count", xlab="itemsets")
+```
+
+
+## Reglas general
+
+A continuación empezamos ya a aplicar apriori para la obtención de reglas. En esta ejecución indicaré que el mínimo soporte sea de 0.09 y la mínima confianza de 0.75. También indicaré el mínimo del tamaño de las reglas, que será 2.
+
+Posteriormente tras cada filtrado según los items que quiera explorar, aplicaré el filtro de reglas redundantes. También muestro un gráfico en el que se muestran como puntos las distintas reglas generadas por nuestro método. Se muestra cómo las reglas con mejor Lift son por lo general con menor soporte que 0.3 y hay algunas reglas con un "confidence"" muy alto donde el valor es cercano a 1, sin embargo, estas reglas las consideraré como triviales siempre y cuando su soporte sea muy elevado, superior al 50%. Los lifts más “realistas” o con más equilibrio los encontramos en un nivel de confianza entre 1 y 1.5 aproximadamente. A continuación se muestran algunas reglas con más lift.
+
+```{r, results='hide'}
+car.rules <- apriori(car.transactions, parameter = list(minlen=2, supp=0.09, conf=0.75))
+#quality(car.rules) <- cbind(quality(car.rules), interestMeasure(car.rules, c("chiSquare", "conviction", "cosine", "coverage", "leverage", "oddsRatio"), car.dataset))
+```
+```{r, results='hide'}
+car.rules.sorted <- sort(car.rules, by="support")
+inspect(head(car.rules.sorted))
+```
+
+En las anteriores reglas se ve cómo la principal consecuencia que nos permite tener un lift bueno es acceptance=unacc. Las dos primeras reglas nos proporcionan gran cantidad de información, puesto que nos indican que en un 33% (soporte=0.33) de los casos de nuestro dataset la compra de dicho coche será inaceptable en caso de que la seguridad proporcionada por este sea baja o el número de pasajeros sea 2 (es el mínimo). Esto nos indica que, en general, según nuestro dataset aquellos coches que cumplan alguna o ambas de estas reglas serán, probablemente, inaceptables.
+
+```{r}
+#plot(car.rules)
+# plot(car.rules, method="graph", control=list(type="items"), measure='support', shading='confidence')
+ plot(car.rules, method="paracoord", reorder=TRUE)
+#plot(car.rules, method="grouped")
+```
+
+También podemos ver la reglas de forma visual a partir del gráfico anterior. Podemos ver las relaciones entre items (pares atributo-valor) siguiendo las flechas que los unen. Se puede observar como para cualquier item si este seta relacionado con los items ‘safety=low’ y ‘persons=2’ , la aceptación del coche sera inaceptable.
+
+A partir de las reglas de asociación nos queda claro que las variables mas importantes para evaluar un coche son el numero de pasajeros y la seguridad. Si alguna de estas variables es “mala”, entonces el coche no sera aceptable.
+
+##  Reglas específicas mediante filtrado
+
+```{r}
+deleteRebundantRules <- function (rules) {
+  subsetMatrix <- is.subset(rules, rules)
+  subsetMatrix[lower.tri(subsetMatrix, diag=TRUE)] <- FALSE
+  redundant <- colSums(subsetMatrix, na.rm=TRUE) >= 1
+  rules <- rules[!redundant]
+  return (rules)
+}
+```
+
+Una vez ya tenemos todas las reglas, vamos a ver qué reglas nos pueden parecer interesantes.
+
+```{r, results='hide'}
+car.transactions <- as(car.dataset,"transactions") 
+car.rules <- apriori(car.transactions, parameter = list(minlen=3, supp=0.08, conf=0.75))
+```
+
+```{r}
+car.rules <- deleteRebundantRules(car.rules)
+car.rules.sorted <- sort(car.rules, by="support")
+inspect(head(car.rules.sorted))
+```
+
+El primer item a estudiar será “persons”, es decir, ver qué pasa para los distintos valores del número de personas que caben en un vehículo.
+
+```{r, echo = TRUE}
+rules.persons <- subset(car.rules, subset = lhs %in% c("persons=2", "persons=4"))
+inspect(head(rules.persons))
+```
+
+De las anteriores reglas se pueden sacar algunas conclusiones y además a partir de reglas con un Lift bueno. Para mí la más significativa es que independientemente de la seguridad del coche, si el número de pasajeros no es superior a 2, el coche será inaceptable. En el caso de que tenga más de dos plazas pero la seguridad es baja, tampoco se considera aceptable el vehículo.
+
+- {persons=4,safety=low}	=>	{acceptance=unacc}
+
+- {persons=2,safety=high}	=>	{acceptance=unacc}
+- {persons=2,safety=med}	=>	{acceptance=unacc}
+
+El siguiente item a estudiar será “safety”, es decir, ver qué pasa para los distintos valores de seguridad de un vehículo. Solo me aparecen 6 reglas.
+
+```{r, echo = TRUE}
+rules.safety <- subset(car.rules, subset = lhs %in% c("safety=low", "safety=med", "safety=high"))
+inspect(head(rules.safety))
+```
+
+Además del número de personas, la seguridad tiene un peso importante e a la hora de considerar un vehículo como aceptable. Independiente del resto de valores, si la seguridad es baja el usuario no considera aceptable un coche.
+
+A continuación voy a probar a ver reglas con items negados. Si nos fijamos en las proporciones de acceptance, la mayoría de coches no han sido considerados aceptados,
+
+```{r}
+table(car.dataset$acceptance)
+```
+Por lo tanto, puede ser muy interesante considerar las tres variables "acc", "good"" y "vgood"  como una sola. Así, se nos quedará un dataset con el mismo número de variables pero la variable acceptance solo posea dos valores, o aceptado o no. Los valores de "acc", "good"" y "vgood" se juntarán dentro de acceptable.
+
+```{r}
+car.dataset.mutated <- car.dataset
+car.dataset.mutated$acceptance <- as.factor(ifelse(car.dataset$acceptance %in% c("good","acc","vgood"), "acc", "unacc"))
+```
+
+
+```{r, results='hide'}
+car.transactions <- as(car.dataset.mutated,"transactions") 
+car.rules <- apriori(car.transactions, parameter = list(minlen=3, supp=0.08, conf=0.75))
+```
+
+```{r}
+car.rules <- deleteRebundantRules(car.rules)
+car.rules.sorted <- sort(car.rules, by="support")
+inspect(head(car.rules.sorted))
+```
+
+Viendo que no obtenemos reglas interesante, vamos a negar la variable "persons". Se va a crear una nueva variable indicando si el coche es biplaza o no. Además haremos lo mismo con la variable "safety". Se considera solo si el coche es inseguro o no.
+
+```{r}
+car.dataset.mutated$safety <- NULL
+car.dataset.mutated$safetyLow <- as.factor(ifelse(car.dataset$safety %in% c("low"), 1, 0))
+car.dataset.mutated$biPlaza <- as.factor(ifelse(car.dataset$persons == 2, 1, 0))
+car.dataset.mutated$persons <- NULL
+```
+
+```{r, results='hide'}
+car.transactions <- as(car.dataset.mutated,"transactions") 
+car.rules <- apriori(car.transactions, parameter = list(minlen=2, supp=0.08, conf=0.75))
+```
+
+```{r}
+car.rules <- deleteRebundantRules(car.rules)
+car.rules.sorted <- sort(car.rules, by="support")
+inspect(car.rules.sorted)
+```
+
+No observamos ninguna regla destacada que no hayamos comentado anteriormente. Tan solo podemos, confirmar con certeza que el número de personas que caben en el coche es un factor relevante a la hora de considerarlo acceptable o no, con una medida de confianza muy buena y un buen valor de lift.
+
+- {biplaza=1}	=>	{acceptance=unacc}
+- {acceptance=acc}	=>	{biPlaza=0}
+
+
+## Conclusiones
+
+Las reglas obtenidas, desde mi punto de vista, han sido un tanto decepcionantes. Sin embargo, pienso que no podía sacar muchas mejores. A partir de la aplicación de técnicas de extracción de reglas de asociación hemos podido ver que las variables mas importantes para evaluar un coche son el numero de pasajeros y la seguridad. Si alguna de estas variables tiene un valor bajo, entonces el coche no sera aceptable. En concreto, el número de personas es más relevante, ya que independientemente de la seguridad del coche si el vehículo es biplaza, no sera considerado adecuado el vehículo.

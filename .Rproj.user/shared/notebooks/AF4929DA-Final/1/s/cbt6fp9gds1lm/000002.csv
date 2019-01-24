@@ -1,0 +1,5 @@
+"0","car.rules.maximal <- car.rules[is.maximal(car.rules)]"
+"0","#inspect(head(sort(car.rules.maximal, by=""support"")))"
+"0","car.rules.closed <- car.rules[is.closed(car.rules)]"
+"0","#inspect(head(sort(car.rules.closed, by=""support"")))"
+"0","barplot( c(frequent=length(car.rules), closed=length(car.rules.closed), maximal=length(car.rules.maximal)), ylab=""count"", xlab=""itemsets"")"

@@ -1,0 +1,3 @@
+"0","heart.data.rules.subset <- subset(heart.data.rules, subset = lhs %pin% c(""exang="", ""sex=""))"
+"0","heart.data.rules.subset <- sort(heart.data.rules.subset, by=""support"")"
+"0","inspect(head(heart.data.rules.subset, n = 10))"

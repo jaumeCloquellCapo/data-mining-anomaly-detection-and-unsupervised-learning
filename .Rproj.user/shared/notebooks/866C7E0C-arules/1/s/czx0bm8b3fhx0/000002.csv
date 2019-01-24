@@ -1,0 +1,5 @@
+"0","dataFCM = data.frame(Frecuentes = length(iSLoan), Cerrados = length(iSCLoan), Maximales = length(iSMLoan))"
+"0","dataFCM = melt(dataFCM)"
+"2","Using  as id variables
+"
+"0","ggplot(dataFCM) + geom_col(aes(variable, value, fill = variable)) + ggtitle(""Histograma conjunto de los itemsets"") + labs(x = ""Itemsets"", y = ""Frecuencia"")"

@@ -47,7 +47,7 @@ Esta base de datos contiene 76 atributos, pero todos los experimentos publicados
 str(heart.data)
 ```
 
-El primer paso es el proceso de limpieza de datos para eliminar posibles valores faltante en el conjunto de datos, luego discretizar posibles variables continuas.  Comprobamos la presencia de N.A. Solo 6 casos presentan símptomas de tener missing values, por ello seran eliminados del dataser
+El primer paso es el proceso de limpieza de datos para eliminar posibles valores faltante en el conjunto de datos, luego discretizar posibles variables continuas.  Comprobamos la presencia de N.A. Solo 6 casos presentan símptomas de tener missing values, por ello seran eliminados del dataset.
 ```{r}
 s = sum(is.na(heart.data))
 heart.data <- na.omit(heart.data)
@@ -79,16 +79,29 @@ heart.data.mutated <- heart.data.mutated %>% mutate(
 str(heart.data.mutated)
 ```
 
-En el siguiente gráfico se muestran los items con una frecuencia de más de 0.1 (soporte > 0.1). En este gráfico podemos decidir qué items estudiar más en profundidad. Para obtener reglas con valor, podemos analizar reglas en las que aparezcan items no muy frecuentes. Como se muestra, hay algunos items bastante frecuentes, como son por ejemplo lapresión arterial en reposo **trestbps=Desirable** y el azúcar en la sangre no en ayunas **fasting_blood_sugar=false** son itemsets muy frecuentes. Sin embargo, estudiar los items opuestos puede resultar bastante más interesante. Además cabe destacar la presencia superior del sexo masculino respecto al femenino. Será interesante poder ver si existe una presencia de enfermedad cardíaca en los hombres superior respecto a las mujeres.
+# Paso a base de datos transaccional
+
+Para el proceso de obtención de reglas de asociación, la base de datos debe ser transaccional.
+
+En el siguiente gráfico se muestran los items con una frecuencia de más de 0.1 (soporte > 0.1). En este gráfico podemos decidir qué items estudiar más en profundidad. Para obtener reglas con valor, podemos analizar reglas en las que aparezcan items no muy frecuentes. Como se muestra, hay algunos items bastante frecuentes, como son **exang=false** y el azúcar en la sangre no en ayunas **fasting_blood_sugar=false**. En ocasiones, estudiar los items opuestos puede resultar bastante más interesante. Además cabe destacar la presencia superior del sexo masculino respecto al femenino. Será interesante poder ver si existe una presencia de enfermedad cardíaca en los hombres superior respecto a las mujeres.
+
+```{r}
+heart.data.transactions.2 <- as(heart.data.mutated,"transactions") 
+itemFrequencyPlot(heart.data.transactions.2, support=0.1, cex.names=0.8)
+```
+
+Cabe remarcar que no hay presencia de los ítems **thalacg** o **restecg**, que a muy seguro tendrán valores de soporte menor de 0.1. Dado que estos ítems son muy interesantes para obtener información del problema, ya podemos remarcar que el valor de soporte para la obtención de las reglas deberá ser menor de 0.1. Vamos a comprobar que esta premisa es así, representando el mismo gráfico pero con menos soporte.
 
 ```{r}
 heart.data.transactions <- as(heart.data.mutated,"transactions") 
-itemFrequencyPlot(heart.data.transactions, support=0.1, cex.names=0.8)
+itemFrequencyPlot(heart.data.transactions, support=0.01, cex.names=0.8)
 ```
 
-En el siguiente gráfico vemos la distribución de los tamaños de los itemsets frecuentes. Vemos cómo el tamaño más común es 5 items por itemset. También se muestran los primeros 10 itemsets frecuentes.
+En el anterior gráfico podemos apreciar como han aparecido dos nuevas columnas, que reprentan los ítems de frecuencia cardiaca **thalacg** y de los resultados electrocardiográficos **restecg** lo que nos lleva a concluir por tanto que los valores de soporte de estos ítems en función al resto son muy bajos, algo que los convierte en muy interesantes y dignos de estudio ya que además resentan a dos clases aceptables del problema.
 
-Usamos apriori para obtener los itemsets frecuentees. Primera información importante que **sex=male** o **fasting_blood_sugar=false** es muy frecuente. En el barplot se muestran los tamaños de itemsets frecuentes. Se ve cómo el tamaño de itemsets más frecuente es 4.
+En el siguiente gráfico vemos la distribución de los tamaños de los itemsets frecuentes. Vemos cómo el tamaño más común es 3 items por itemset. También se muestran los primeros 10 itemsets frecuentes.
+
+Usamos apriori para obtener los itemsets frecuentees. Primera información importante que **sex=male** o **fasting_blood_sugar=false** es muy frecuente. En el barplot se muestran los tamaños de itemsets frecuentes. Se ve cómo el tamaño de itemsets más frecuente es 3. 
 
 ```{r}
 heart.data.frequent <- apriori(heart.data.transactions, parameter=list(support=0.1, target="frequent"), control=list(verbose = FALSE))
@@ -97,7 +110,7 @@ barplot(table(size(heart.data.frequent)), xlab="itemset size", ylab="count")
 inspect(head(heart.data.frequent.sorted, n = 10))
 ```
 
-Vamos a ver cuál es la cantidad de itemsets frecuentes, de itemsets cerrados y de itemsets maximales. Como se muestra en el siguiente gráfico, hay una gran diferencia entre la cantidad de itemsets frecuentes y los cerrados y maximales.
+Vamos a ver cuál es la cantidad de itemsets frecuentes, de itemsets cerrados y de itemsets maximales. Como se muestra en el siguiente gráfico, hay una gran diferencia entre la cantidad de itemsets frecuentes y los cerrados  respecto a los maximales.
 
 ```{r}
 heart.data.frequent.maximal <- heart.data.frequent[is.maximal(heart.data.frequent)]
@@ -121,8 +134,11 @@ inspect(head(heart.data.rules.sorted, n = 10))
 plot(heart.data.rules)
 ```
 
-En las anteriores reglas se ve cómo la principal consecuencia que nos permite tener un lift bueno es **num=sick** es decir, si el usuario esta enfermo. Reglas interesantes a partir de estas, por ejemplo, cómo la reversión **thal=reversable defect** es un itemset que aparecec en varias reglas en el antececendente y en todas ellas el consecuente es un estado no saludable del paciente. Lo más destacable de este antecendente es el hecho de que independiente del resto de antecedentes, su aparición tienen un peso destacable en el consecuente enfermo. El colesterol alto **cholestoral=[265,564]** tiene una presencia en distintos itemsets. Será interesante su estudio y si tiene alguna relación respecto a la enfermedad coronaria. Otro aspecto a destacar y que contradice mis creencias al respecto, es que la edad no aparece en ninguna regla importante y por tanto no es un factor relevante.
+En las anteriores reglas se ve cómo la principal consecuencia que nos permite tener un lift bueno es **num=sick** es decir, si el usuario esta enfermo. Reglas interesantes a partir de estas, por ejemplo, cómo la reversión **thal=reversable defect** es un itemset que aparece en varias reglas en el antececendente y en todas ellas el consecuente es un estado no saludable del paciente. Lo más destacable de este antecendente es el hecho de que independiente del resto de antecedentes, su aparición tienen un peso destacable en el consecuente enfermo. 
 
+El colesterol alto **cholestoral=[265,564]** tiene una presencia en distintos itemsets. A simple vista parece obvio que las personas con enfermedades cardíacas tienden a ser mayores y tienen una presión arterial más alta, y niveles altos de colesterol. Será interesante su estudio y ver si tiene realmente alguna relación respecto a la enfermedad coronaria. Otro aspecto a destacar y que contradice mis creencias al respecto, es que la edad no aparece en ninguna regla importante y por tanto no es un factor relevante. Aún así haremos entraremos en más detalle más adelante
+
+Finalmente, podemos observar como **thalach=(104,136]** aparece como antecedente en todos las reglas cuyo consecuente es un estado no saludable.
 
 ## Reglas específicas mediante filtrado
 
@@ -155,12 +171,12 @@ plot(heart.data.rules.subset, method="paracoord", reorder=TRUE)
 -	{sex=female,exang=false}	=>	{num=healthy}
 -	{sex=male,exang=true}	=>	{num=sick}
 
-Además, si los resultados mostraron que cuando la angina inducida por el ejercicio (dolor en el pecho) era falsa **exang=false**, era un buen indicador de que una persona estaba sana, independientemente del género (la angina inducida por el ejercicio = falsa ha aparecido en el LHS de todas las reglas de alta confianza). 
+Además, si los resultados muestran que cuando la angina inducida por el ejercicio (dolor en el pecho) es falsa **exang=false**, es un buen indicador de que una persona estaba sana, independientemente del género (la angina inducida por el ejercicio = falsa ha aparecido en el LHS de todas las reglas de alta confianza). 
 
 - {sex=male,exang=true}	=>	{num=sick}
 - {sex=female,exang=false}	=>	{num=healthy}
 
-El número de vasos coloreados que son cero **ca=0** y que el estado del corazón (normal) **thal=normal** también se mostró como buenos indicadores de salud. 
+El número de vasos coloreados que son cero **ca=0** y que el estado del corazón (normal) **thal=normal** también se muestran como buenos indicadores de salud. 
 
 ```{r}
 heart.data.rules.subset <- subset(heart.data.rules, subset = lhs %pin% c("exang=", "sex="))
@@ -168,7 +184,7 @@ heart.data.rules.subset <- sort(heart.data.rules.subset, by="support")
 inspect(head(heart.data.rules.subset, n = 10))
 ```
 
-Las reglas filtradas para la clase "enfermo", por otro lado, mostraron que el tipo de dolor torácico es asintomático **cp=asymptomatic** y que la reversión **thal=reversable defect** es un indicador probable de que una persona está enferma (ambas reglas de alta confianza tienen estos dos factores en LHS).
+Las reglas filtradas para la clase "enfermo", por otro lado, enseñan que el tipo de dolor torácico es asintomático **cp=asymptomatic** y que la reversión **thal=reversable defect** es un indicador probable de que una persona está enferma (ambas reglas de alta confianza tienen estos dos factores en LHS).
 
 ```{r}
 heart.data.rules.subset <- subset(heart.data.rules, subset = rhs %in% c("num=sick"))
@@ -185,20 +201,17 @@ inspect(head(heart.data.rules.subset, n = 10))
 plot(heart.data.rules.subset, method="paracoord", reorder=TRUE)
 ```
 
+# Ítems negados y Análisis por grupos
 
-
-A continuación voy a probar a ver reglas con items negados. 
-
-Voy a negar la variable cp y ca y el colesterol.
+A continuación voy a probar a ver reglas con items negados. Se va a negar la variables que hemos supuesto en nuestra hipotesis al principio del estudio **age** y **trestbps** y  **cholestoral**. Para ello creeremos las variables negadas de si el paciente tienen colesterol alto ( cholestoral > 250 ), tiene edad avanzada ( age > 50 ) o si presenta reversion (trestbps > 140)
 
 ```{r}
-heart.data.mutated$thalIsReversableDefect <- as.factor(ifelse(heart.data$thal == 7 , 1, 0))
+heart.data.mutated$trestbpsHight <- as.factor(ifelse(heart.data$trestbps > 139 , 1, 0))
 heart.data.mutated$ageOld <- as.factor(ifelse(heart.data$age > 50 , 1, 0))
 heart.data.mutated$cholestoralHight <- as.factor(ifelse(heart.data$cholestoral > 250 , 1, 0))
 heart.data.mutated$caIs0 <- as.factor(ifelse(heart.data$ca == 0, 1 , 0))
 heart.data.mutated <- heart.data.mutated %>% mutate(
-  ca = NULL,
-  thal = NULL,
+  trestbpsHight = NULL,
   age = NULL,
   cholestoral = NULL
 )
@@ -219,9 +232,14 @@ inspect(head(heart.data.rules.sorted, n = 10))
 ```
 
 
-Se muestran las 10 primeras reglas ordenadas por Lift. Observándolas, vemos como no obtenemos ninguna regla demasiado informativa. Quizás la más destacable sea que si el 
-el número de vasos principales coloreados por fluoroscopia **ca** es distinto de 0 es muy probables que tengan una enfermedad coronaria. Respecto a la variable ageOld no nos aporta ninguna regla como al igual sucede con el colesterol alto. Aparentemente no existe relacion ninguna entre el colesterol y la enfermedad, por tanto descartamos las hipotesi hecha al principio del estudio hacerca del colesterol.
+Se muestran las 10 primeras reglas ordenadas por Lift. Observándolas, vemos como no obtenemos ninguna regla demasiado informativa. Quizás la más destacable sea que si el  el número de vasos principales coloreados por fluoroscopia **ca** es distinto de 0 es muy probables que tengan una enfermedad coronaria. Respecto a la variable ageOld no nos aporta ninguna regla como al igual sucede con el colesterol alto. Aparentemente no existe relacion ninguna entre el colesterol y la enfermedad, por tanto descartamos las hipotesi hecha al principio del estudio hacerca del colesterol.
 
 ## CONCLUSIONES
 
 Esta investigación ha presentado un experimento de extracción de reglas en datos de enfermedades del corazón utilizando algoritmos de extracción de reglas (Apriori). Se realizó un análisis adicional basado en la minería de reglas al clasificar los datos según el género y se encontraron factores de riesgo significativos para las enfermedades cardíacas tanto para hombres como para mujeres. Curiosamente, se encuentra en el conjunto de reglas saludables, ser "femenino" es uno de los factores para una condición cardíaca saludable. En otras palabras, los resultados indicaron que las mujeres tienen más probabilidades de estar libres de enfermedad coronaria que los hombres. 
+
+La reversión **thal=reversable defect** es un indicador probable de que una persona está enferma.
+
+En cambio, para las personas sanas hemos observado que cuandp la angina inducida por el ejercicio (dolor en el pecho) es falsa **exang=false** y cuenado el número de vasos coloreadod son cero **ca=0** son unos buenos indicadores de que una persona estaba sana.
+
+Finalmente, al contrario de lo qye hemos supuesto a partir de nuestros conocimientos acerca del tema, no vemos indicios que exista ninguna relación entre la edad  y el colesterol respecto de si una personas puede sufrir o no dicha enfermedad coronária.

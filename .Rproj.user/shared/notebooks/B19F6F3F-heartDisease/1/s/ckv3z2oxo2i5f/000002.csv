@@ -1,1 +1,0 @@
-"0","heart.data.mutated$preMenopausic <- as.factor(ifelse(heart.data$age < 45 , 1 , 0))"

@@ -1,3 +1,0 @@
-"0","heart.data <- read.csv(""https://archive.ics.uci.edu/ml/machine-learning-databases/heart-disease/processed.cleveland.data"",header=FALSE,sep="","",na.strings = '?')"
-"0","names(heart.data) <- c( ""age"", ""sex"", ""cp"", ""trestbps"", ""cholestoral"",""fasting_blood_sugar"", ""restecg"","
-"0","                   ""thalach"",""exang"", ""oldpeak"",""slope"", ""ca"", ""thal"", ""num"")"

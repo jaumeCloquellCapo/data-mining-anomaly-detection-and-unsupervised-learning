@@ -1,2 +1,0 @@
-"0","car.transactions <- as(dt.mutated,""transactions"") "
-"0","itemFrequencyPlot(car.transactions, support=0.05, cex.names=0.8)"

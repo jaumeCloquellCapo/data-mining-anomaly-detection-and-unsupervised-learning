@@ -1,4 +1,0 @@
-"0","heart.data.rules <- apriori(heart.data.transactions, parameter = list(minlen=2, supp=0.1, conf=0.79), appearance = list(rhs = c(""num=healthy"", ""num=sick"")), control=list(verbose = FALSE))"
-"0","heart.data.rules <- deleteRebundantRules(heart.data.rules)"
-"0","heart.data.rules.sorted <- sort(heart.data.rules, by=""support"")"
-"0","inspect(head(heart.data.rules.sorted, n = 10))"

@@ -1,2 +1,0 @@
-"0","heart.data.transactions <- as(heart.data.mutated,""transactions"") "
-"0","itemFrequencyPlot(heart.data.transactions, support=0.1, cex.names=0.8)"

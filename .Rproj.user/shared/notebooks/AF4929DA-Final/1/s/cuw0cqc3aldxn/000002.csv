@@ -1,2 +1,0 @@
-"0","car.dataset.mutated <- car.dataset"
-"0","car.dataset.mutated$acceptance <- as.factor(ifelse(car.dataset$acceptance %in% c(""good"",""acc"",""vgood""), ""acc"", ""unacc""))"

@@ -1,7 +1,0 @@
-"0","deleteRebundantRules <- function (rules) {"
-"0","  subsetMatrix <- is.subset(rules, rules)"
-"0","  subsetMatrix[lower.tri(subsetMatrix, diag=TRUE)] <- FALSE"
-"0","  redundant <- colSums(subsetMatrix, na.rm=TRUE) >= 1"
-"0","  rules <- rules[!redundant]"
-"0","  return (rules)"
-"0","}"

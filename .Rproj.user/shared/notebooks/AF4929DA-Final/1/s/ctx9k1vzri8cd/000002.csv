@@ -1,2 +1,0 @@
-"0","rules.persons <- subset(car.rules, subset = lhs %in% c(""persons=2"", ""persons=4""))"
-"0","inspect(head(rules.persons))"

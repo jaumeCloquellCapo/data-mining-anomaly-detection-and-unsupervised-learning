@@ -1,4 +1,0 @@
-"0","car.dataset.mutated$safety <- NULL"
-"0","car.dataset.mutated$safetyLow <- as.factor(ifelse(car.dataset$safety %in% c(""low""), 1, 0))"
-"0","car.dataset.mutated$biPlaza <- as.factor(ifelse(car.dataset$persons == 2, 1, 0))"
-"0","car.dataset.mutated$persons <- NULL"

@@ -1,3 +1,0 @@
-"0","#plot(car.rules)"
-"0","# plot(car.rules, method=""graph"", control=list(type=""items""), measure='support', shading='confidence')"
-"0"," plot(car.rules, method=""paracoord"", reorder=TRUE)"
